@@ -1,0 +1,9 @@
+{
+  "name": "azureOpenAi-func-app",
+  "version": "0.1.0",
+  "dependencies": {
+    "@azure/openai": "^1.0.0-beta.6",
+    "@line/bot-sdk": "^7.7.0",
+    "node-fetch": "^3.3.2"
+  }
+}

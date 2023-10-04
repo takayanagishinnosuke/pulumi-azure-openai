@@ -1,0 +1,6 @@
+config:
+  azure-native:location: japaneast
+  azureOpenAi-func:appPath: ./app
+  azureOpenAi-func:errorDocument: .html
+  azureOpenAi-func:indexDocument: indev.html
+  azureOpenAi-func:sitePath: ./www
