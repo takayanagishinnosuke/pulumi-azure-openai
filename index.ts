@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
-import * as synced from "@pulumi/synced-folder";
+import { getConnectionString, signedBlobReadUrl } from "./helpers";
+
 
 // Import the program's configuration settings.
 const config = new pulumi.Config();
@@ -42,8 +43,20 @@ const openaiKeys =  azure.cognitiveservices.listAccountKeysOutput({
 });
 const openaiKey = openaiKeys.apply(openaiKeys => openaiKeys.key1 || "");
 
+const logAnalyticsWorkspace = new azure.operationalinsights.Workspace("logAnalyticsWorkspace", {
+    resourceGroupName: resourceGroup.name,
+});
+
+const appInsights = new azure.insights.Component("appInsights", {
+    applicationType: "web",
+    kind: "web",
+    resourceGroupName: resourceGroup.name,
+    workspaceResourceId: logAnalyticsWorkspace.id,
+});
+
+
 // Create a blob storage account.
-const account = new azure.storage.StorageAccount("account", {
+const storageAccount = new azure.storage.StorageAccount("account", {
     resourceGroupName: resourceGroup.name,
     kind: azure.storage.Kind.StorageV2,
     sku: {
@@ -54,43 +67,32 @@ const account = new azure.storage.StorageAccount("account", {
 
 // Create a storage container for the serverless app.
 const appContainer = new azure.storage.BlobContainer("app-container", {
-    accountName: account.name,
+    accountName: storageAccount.name,
     resourceGroupName: resourceGroup.name,
     publicAccess: azure.storage.PublicAccess.None,
 });
 
-// Upload the serverless app to the storage container.
+// Upload the Function app to the storage container.
 const appBlob = new azure.storage.Blob("app-blob", {
-    accountName: account.name,
+    accountName: storageAccount.name,
     resourceGroupName: resourceGroup.name,
     containerName: appContainer.name,
     source: new pulumi.asset.FileArchive(appPath),
 });
 
-// Create a shared access signature to give the Function App access to the code.
-const signature = azure.storage.listStorageAccountServiceSASOutput({
-    resourceGroupName: resourceGroup.name,
-    accountName: account.name,
-    protocols: azure.storage.HttpProtocol.Https,
-    sharedAccessStartTime: "2022-01-01",
-    sharedAccessExpiryTime: "2030-01-01",
-    resource: azure.storage.SignedResource.C,
-    permissions: azure.storage.Permissions.R,
-    contentType: "application/json",
-    cacheControl: "max-age=5",
-    contentDisposition: "inline",
-    contentEncoding: "deflate",
-    canonicalizedResource: pulumi.interpolate`/blob/${account.name}/${appContainer.name}`,
-});
+
+const storageConnectionString = getConnectionString(resourceGroup.name, storageAccount.name);
+const codeBlobUrl = signedBlobReadUrl(appBlob, appContainer, storageAccount, resourceGroup);
 
 // Create an App Service plan for the Function App.
 const plan = new azure.web.AppServicePlan("plan", {
     resourceGroupName: resourceGroup.name,
-    kind: "Linux",
     sku: {
         name: "Y1",
         tier: "Dynamic",
     },
+    // kind: "Linux",
+    // reserved: true,
 });
 
 // Create the Function App.
@@ -99,7 +101,13 @@ const functionApp = new azure.web.WebApp("function-app", {
     serverFarmId: plan.id,
     kind: "FunctionApp",
     siteConfig: {
+        nodeVersion: "~18",
         appSettings: [
+            {
+                name: "AzureWebJobsStorage",
+                value: storageConnectionString,
+
+            },
             {
                 name: "FUNCTIONS_WORKER_RUNTIME",
                 value: "node",
@@ -114,8 +122,12 @@ const functionApp = new azure.web.WebApp("function-app", {
             },
             {
                 name: "WEBSITE_RUN_FROM_PACKAGE",
-                value: pulumi.all([account.name, appContainer.name, appBlob.name, signature])
-                    .apply(([accountName, containerName, blobName, signature]) => `https://${accountName}.blob.core.windows.net/${containerName}/${blobName}?${signature.serviceSasToken}`),
+                value: codeBlobUrl,
+            },
+            {
+                name: "APPINSIGHTS_INSTRUMENTATIONKEY",
+                value: appInsights.instrumentationKey, 
+
             },
             {
                 name: "OPENAI_API_KEY",
@@ -149,6 +161,7 @@ const functionApp = new azure.web.WebApp("function-app", {
         },
     },
 });
+
 
 
 // Export the serverless endpoint.
