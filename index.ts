@@ -131,15 +131,15 @@ const functionApp = new azure.web.WebApp("function-app", {
             },
             {
                 name: "LINE_CHANNEL_ACCESS_TOKEN",
-                value: "3ktUXkqvdWyYsMUq1SdDtFISj2XkIvUeeSpEDrCObRjZ8H6y4/anBtxDkzbxXkLbodwhiSaSk4QnIe1IoPiE4izCFzxV2zpC/6ODwi1vhLVuT6ugEOfTFzSRV/0bmV/At14THxmsvz/6rbd408UDYAdB04t89/1O/w1cDnyilFU=",
+                value: "hoge",
             },
             {
                 name: "LINE_CHANNEL_SECRET",
-                value: "5e2cc09684c3841cfd7ef98922dee7a4",
+                value: "huga",
             },
             {
                 name: "LINE_CHANNEL_ID",
-                value: "2000426677",
+                value: "0000",
             }
         ],
         cors: {
