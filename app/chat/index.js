@@ -1,7 +1,6 @@
 const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
 const line = require('@line/bot-sdk');
 
-// LINEのアクセストークンとシークレットを環境変数から取得
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
 const config = {
@@ -9,10 +8,10 @@ const config = {
     channelSecret: LINE_CHANNEL_SECRET
 };
 
-// LINEのクライアントを作成
+// LINE Client
 const client = new line.Client(config);
 
-//AzureOpenAIのクライアントを作成
+//Azure OpenAI Client
 const AZ_OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const AZ_OPENAI_ENDPOINT = process.env.OPENAI_ENDPOINT;
 const modelName = process.env.OPENAI_DEPLOYMENT_NAME || "gpt-35-turbo";
@@ -38,12 +37,11 @@ const chatgpt = async (message) => {
           }
     }
     catch (error) {
-        console.log(error);
-        throw new Error("OpenAI API Error");
+        throw new Error(`OpenAI API Error: ${error.message}`);
     }
 }
 
-//署名検証
+
 const validate_signature = (body, signature) => {
     try{
         const hash = crypto.createHmac("sha256", LINE_CHANNEL_SECRET).update(Buffer.from(JSON.stringify(body))).digest("base64");
@@ -106,7 +104,7 @@ module.exports = async function (context, req) {
         client.replyMessage(req.body["events"][0].replyToken, message);
         return;
     }catch(error){
-        console.log(error);
+        console.error(error);
         message = { type: "text", text: "申し訳ありませんが、エラーが発生しました" };
         client.replyMessage(req.body["events"][0].replyToken, message);
         return;

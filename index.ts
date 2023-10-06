@@ -91,8 +91,8 @@ const plan = new azure.web.AppServicePlan("plan", {
         name: "Y1",
         tier: "Dynamic",
     },
-    // kind: "Linux",
-    // reserved: true,
+    kind: "Linux",
+    reserved: true,
 });
 
 // Create the Function App.
@@ -101,7 +101,7 @@ const functionApp = new azure.web.WebApp("function-app", {
     serverFarmId: plan.id,
     kind: "FunctionApp",
     siteConfig: {
-        nodeVersion: "~18",
+        linuxFxVersion: "Node|18",
         appSettings: [
             {
                 name: "AzureWebJobsStorage",
@@ -119,6 +119,10 @@ const functionApp = new azure.web.WebApp("function-app", {
             {
                 name: "FUNCTIONS_EXTENSION_VERSION",
                 value: "~4",
+            },
+            {
+                name: "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                value: storageConnectionString,
             },
             {
                 name: "WEBSITE_RUN_FROM_PACKAGE",
@@ -149,10 +153,6 @@ const functionApp = new azure.web.WebApp("function-app", {
                 name: "LINE_CHANNEL_SECRET",
                 value: "huga",
             },
-            {
-                name: "LINE_CHANNEL_ID",
-                value: "0000",
-            }
         ],
         cors: {
             allowedOrigins: [
