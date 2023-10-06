@@ -22,6 +22,63 @@ if(!AZ_OPENAI_API_KEY || !AZ_OPENAI_ENDPOINT){
 
 const openaiClient = new OpenAIClient(AZ_OPENAI_ENDPOINT, new AzureKeyCredential(AZ_OPENAI_API_KEY));
 
+module.exports = async function (context, req) {
+    const headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    };
+    
+    //Test
+    if (req.method === "GET") {
+        context.res = {
+            headers,
+            body: "Hello, world!",
+            status: 200,
+        };
+        return;
+    }
+
+    if(req.body["events"].length === 0){
+        context.res = { status: 200, body: "Please pass a message on the query string or in the request body" };
+        return;
+    }
+
+    
+    if(req.body["events"][0].type !== "message" || req.body["events"][0].message.type !== "text"){
+        message = {
+            type: "text",
+            text: "申し訳ありませんが、テキストメッセージのみ対応しております"
+        };
+        client.replyMessage(req.body["events"][0].replyToken, message);
+        return;
+    }
+    
+    if(!validate_signature(req.body, req.headers["x-line-signature"])){
+        context.res = {
+            status: 202,
+            body: "fail to validate signature"
+        };
+    }else{
+        context.res = {
+            status: 200,
+            body: "success"
+        };
+    };
+    
+    try{
+        const ans = await chatgpt(req.body["events"][0].message.text);
+        message = { type: "text", text: ans };
+        client.replyMessage(req.body["events"][0].replyToken, message);
+        return;
+    }catch(error){
+        console.error(error);
+        message = { type: "text", text: "申し訳ありませんが、エラーが発生しました" };
+        client.replyMessage(req.body["events"][0].replyToken, message);
+        return;
+    }
+
+};
+
 //ChatGPT
 const chatgpt = async (message) => {
     try{
@@ -39,8 +96,7 @@ const chatgpt = async (message) => {
     catch (error) {
         throw new Error(`OpenAI API Error: ${error.message}`);
     }
-}
-
+};
 
 const validate_signature = (body, signature) => {
     try{
@@ -49,65 +105,4 @@ const validate_signature = (body, signature) => {
     }catch(e){
         return false;
     }
-}
-
-
-module.exports = async function (context, req) {
-    const headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    };
-
-    if (req.method === "GET") {
-        context.res = {
-            headers,
-            body: "Hello, world!",
-            status: 200,
-        };
-        return;
-    }
-    //LINEとの接続確認用
-    if(req.body["events"].length === 0){
-        context.res = { status: 200, body: "Please pass a message on the query string or in the request body" };
-        return;
-    }
-
-    //署名検証
-    if(!validate_signature(req.body, req.headers["x-line-signature"])){
-        context.res = {
-            status: 200,
-            body: "fail to validate signature"
-        };   
-    }
-    else{
-        context.log("success to validate signature")
-        context.res = {
-            status: 200,
-            body: "success to validate signature"
-        };   
-    };
-    
-    //テキストメッセージ以外の場合は、エラーメッセージを返す
-    if(req.body["events"][0].type !== "message" || req.body["events"][0].message.type !== "text"){
-        message = {
-            type: "text",
-            text: "申し訳ありませんが、テキストメッセージのみ対応しております"
-        };
-        client.replyMessage(req.body["events"][0].replyToken, message);
-        return;
-    }
-    
-
-    try{
-        const ans = await chatgpt(req.body["events"][0].message.text);
-        message = { type: "text", text: ans };
-        client.replyMessage(req.body["events"][0].replyToken, message);
-        return;
-    }catch(error){
-        console.error(error);
-        message = { type: "text", text: "申し訳ありませんが、エラーが発生しました" };
-        client.replyMessage(req.body["events"][0].replyToken, message);
-        return;
-    }
-
 };

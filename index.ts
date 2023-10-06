@@ -1,7 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 import { getConnectionString, signedBlobReadUrl } from "./helpers";
+import * as dotenv from "dotenv";
 
+dotenv.config();
 
 // Import the program's configuration settings.
 const config = new pulumi.Config();
@@ -147,11 +149,11 @@ const functionApp = new azure.web.WebApp("function-app", {
             },
             {
                 name: "LINE_CHANNEL_ACCESS_TOKEN",
-                value: "hoge",
+                value: process.env["LINE_CHANNEL_ACCESS_TOKEN"] || "",
             },
             {
                 name: "LINE_CHANNEL_SECRET",
-                value: "huga",
+                value: process.env["LINE_CHANNEL_SECRET"] || "",
             },
         ],
         cors: {
