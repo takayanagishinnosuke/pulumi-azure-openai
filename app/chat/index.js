@@ -1,4 +1,5 @@
 const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
+const crypto = require("crypto");
 const line = require('@line/bot-sdk');
 
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -58,12 +59,8 @@ module.exports = async function (context, req) {
             status: 202,
             body: "fail to validate signature"
         };
-    }else{
-        context.res = {
-            status: 200,
-            body: "success"
-        };
-    };
+        return;
+    }
     
     try{
         const ans = await chatgpt(req.body["events"][0].message.text);
@@ -103,6 +100,7 @@ const validate_signature = (body, signature) => {
         const hash = crypto.createHmac("sha256", LINE_CHANNEL_SECRET).update(Buffer.from(JSON.stringify(body))).digest("base64");
         return hash === signature;
     }catch(e){
+        console.log(e)
         return false;
     }
 };
